@@ -1621,6 +1621,80 @@ SETUP_CSS = """
   text-transform:uppercase;
 }
 
+/* ----- månadens rekord ----- */
+.st-key-chase{
+  width:fit-content !important;
+  max-width:100%;
+  margin:.35rem auto .9rem !important;
+  background:rgba(14,24,20,.78);
+  border:1px solid #e2b04a;
+  border-radius:22px;
+  padding:1.35rem 1.9rem 1.7rem !important;
+  box-shadow:0 0 22px rgba(226,176,74,.2), 0 18px 40px rgba(0,0,0,.38);
+  text-align:center;
+  overflow:visible !important;
+}
+.st-key-chase [data-testid="stMarkdownContainer"],
+.st-key-chase [data-testid="stMarkdown"]{
+  overflow:visible !important;
+}
+.sx-chase-kicker{
+  font-family:'Orbitron', sans-serif;
+  font-size:.68rem;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:#e2b04a;
+  margin-bottom:.45rem;
+  text-align:center !important;
+}
+.sx-chase-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:.75rem;
+  padding:.2rem 0 .15rem;
+}
+.sx-chase-ava,
+.sx-chase-initial{
+  width:2.7rem;
+  height:2.7rem;
+  border-radius:50%;
+  border:2px solid #e2b04a;
+  box-shadow:0 0 14px rgba(226,176,74,.45);
+  flex:0 0 auto;
+}
+.sx-chase-ava{
+  object-fit:cover;
+}
+.sx-chase-initial{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(226,176,74,.16);
+  color:#f8e2a4;
+  font-family:'Cinzel', serif;
+  font-weight:700;
+  font-size:1.15rem;
+}
+.sx-chase-who{
+  color:#f4f1de;
+  font-weight:800;
+  font-size:1.08rem;
+}
+.sx-chase-score{
+  font-family:'Cinzel', serif;
+  font-weight:900;
+  font-size:2.15rem;
+  line-height:1;
+  color:#f8e2a4;
+  text-shadow:0 2px 0 #8d6b28, 0 8px 16px rgba(0,0,0,.45);
+}
+.sx-chase-empty{
+  color:#f4f1de;
+  font-weight:700;
+  text-align:center !important;
+}
+
 /* ----- kort på startsidan ----- */
 .st-key-openbox,
 .st-key-newbox{
@@ -2182,6 +2256,36 @@ def start_nav(active: str = "play", back: bool = False):
             st.rerun()
 
 
+def month_record_html() -> str | None:
+    """Kortet för månadens bästa resultat. None om databasen inte svarar."""
+    now = datetime.now(TZ)
+    try:
+        rows = get_highscores(now.year, now.month)
+    except Exception:
+        return None
+    kicker = '<div class="sx-chase-kicker">Månadens rekord</div>'
+    if not rows:
+        return kicker + '<div class="sx-chase-empty">Månaden väntar på ett rekord.</div>'
+    top = rows[0]
+    name = str(top.get("player_name") or "")
+    score = int(top.get("score") or 0)
+    _, by_name = roster_maps()
+    src = avatar_src(by_name.get(name.casefold()))
+    if src:
+        face = f'<img class="sx-chase-ava" alt="" src="{html.escape(src, quote=True)}">'
+    else:
+        initial = html.escape((name[:1] or "?").upper())
+        face = f'<span class="sx-chase-initial">{initial}</span>'
+    return (
+        f"{kicker}"
+        '<div class="sx-chase-row">'
+        f"{face}"
+        f'<div class="sx-chase-who">{html.escape(name)}</div>'
+        f'<div class="sx-chase-score">{score}</div>'
+        "</div>"
+    )
+
+
 def setup_view():
     inject_css(SETUP_CSS)
     start_nav()
@@ -2210,6 +2314,10 @@ def setup_view():
         st.session_state["setup_ready"] = True
 
     if DB_ENABLED:
+        record = month_record_html()
+        if record:
+            with st.container(key="chase"):
+                st.markdown(record, unsafe_allow_html=True)
         open_games = list_open_games()
         if open_games:
             with st.container(key="openbox"):
